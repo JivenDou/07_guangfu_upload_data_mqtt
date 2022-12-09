@@ -50,22 +50,44 @@ def dateAndTimeToTimestamp(date_time):
 
 
 def setSendStatusIsSucceed(dataInfo):
+    """
+    设置成功上传数据的设备的is_send置1
+    :param dataInfo: [{'id': 1, 'tableName': 'CR1000X_1', 'is_avg': 1}]
+    """
     if dataInfo is not None:
         for i in range(len(dataInfo)):
-            id = dataInfo[i]['id']
-            table_name = "table_" + str(dataInfo[i]['tableName'])
-            my.set_send_status(table_name, id, 1)
+            t_id = dataInfo[i]['id']
+            is_avg = dataInfo[i]['is_avg']
+            if is_avg:
+                table_name = "copy_table_" + str(dataInfo[i]['tableName'])
+            else:
+                table_name = "table_" + str(dataInfo[i]['tableName'])
+            my.set_send_status(table_name, t_id, 1)
 
 
 def getMqttDataFromMysql(list_devices, appId=None, token=None):
+    """
+    获取打包数据
+    :param list_devices:[{'device_name': 'GI410_A', 'is_avg': 0},..., {'device_name': 'SVM30_5', 'is_avg': 1}]
+    :param appId:
+    :param token:
+    :return: param（打包数据）, dataInfo（有效数据设备）
+    """
     dataList = []
     data = {}
     data_from_mysql_info_list = []
-    for index in range(len(list_devices)):
-        list_points = my.get_mqtt_point(list_devices[index])
-        data_from_mysql = my.get_newest_data('table_' + str(list_points[0]['deviceName']))
+    for device in list_devices:
+        device_name = device['device_name']
+        is_avg = device['is_avg']
+        list_points = my.get_mqtt_point(device_name)
+        if is_avg:
+            table_name = 'copy_table_' + str(list_points[0]['deviceName'])
+        else:
+            table_name = 'table_' + str(list_points[0]['deviceName'])
+        data_from_mysql = my.get_newest_data(table_name)
         # logger.info(list_points)
         # logger.info(data_from_mysql)
+        # 判断最新数据超过5分钟为设备离线
         if len(data_from_mysql) > 0:
             date_time = str(data_from_mysql['times'])
             date_time = dateAndTimeToTimestamp(date_time)
@@ -76,7 +98,6 @@ def getMqttDataFromMysql(list_devices, appId=None, token=None):
         dataDist = {}
         data_from_mysql_info_dict = {}
 
-        # STS_DI = 0
         # 设备在线时
         if STS_DI == 0:
             dataDist['DQ_DI'] = '0'
@@ -86,6 +107,7 @@ def getMqttDataFromMysql(list_devices, appId=None, token=None):
             dataDist['times'] = str(data_from_mysql['times'])
             data_from_mysql_info_dict['id'] = data_from_mysql['id']
             data_from_mysql_info_dict['tableName'] = list_points[0]['deviceName']
+            data_from_mysql_info_dict['is_avg'] = is_avg
             data_from_mysql_info_list.append(data_from_mysql_info_dict)
             for i in range(len(list_points)):
                 # [{'deviceName': 'GI410_A', 'serialNumber': 1, 'storageType': 'float', 'mqttCode': None,'lowLimit': -90.0, 'upLimit': 90.0},
@@ -101,7 +123,7 @@ def getMqttDataFromMysql(list_devices, appId=None, token=None):
                         dataDist.pop(columnName)  # 功能优化，过滤坏数据
 
             dataList.append(dataDist)
-            logger.info(dataDist)
+            # logger.info(dataDist)
         # 设备离线时
         elif STS_DI == 1:
             # code, point = getCodeAndPoint(list_points[0]['mqttCode'])
@@ -110,12 +132,13 @@ def getMqttDataFromMysql(list_devices, appId=None, token=None):
             dataDist['code'] = list_points[0]['deviceName']
             dataDist['ts'] = int(round(time.time() * 1000))
             dataList.append(dataDist)
-            logger.info(dataDist)
+            # logger.info(dataDist)
 
     data['data'] = dataList
     # data['appId'] = appId
     # data['token'] = token
     param = json.dumps(data)
+    # param = ''
     return param, data_from_mysql_info_list
 
 

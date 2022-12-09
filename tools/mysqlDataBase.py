@@ -212,7 +212,7 @@ class MysqldbOperational(object):
                 self.logger.error("fields input error, please input list fields.")
                 raise Exception("fields input error, please input list fields.")
         sql = sql + consql + order
-        #print('select:' + sql)
+        # print('select:' + sql)
         return self.executeSql(sql)
 
     def select_last_one(self, tablename, fields='*'):
@@ -223,7 +223,7 @@ class MysqldbOperational(object):
         """
 
         sql = 'select %s from %s order by time desc limit 1 ' % (fields, tablename)
-        #print('select:' + sql)
+        # print('select:' + sql)
         if fields == "*":
             return self.executeSql(sql)
         else:
@@ -258,8 +258,6 @@ class MysqldbOperational(object):
         except pymysql.Error as e:
             self.con.rollback()
             self.logger.error('in function insertMany.' + repr(e))
-
-
 
     def delete(self, tablename, cond_dict):
         """删除数据
@@ -309,7 +307,7 @@ class MysqldbOperational(object):
         for tmpkey, tmpvalue in attrs_dict.items():
             attrs_list.append("`" + tmpkey + "`" + "=" + "\'" + tmpvalue + "\'")
         attrs_sql = ",".join(attrs_list)
-        #print("attrs_sql:", attrs_sql)
+        # print("attrs_sql:", attrs_sql)
         if cond_dict != '':
             for k, v in cond_dict.items():
                 if isinstance(v, str):
@@ -317,7 +315,7 @@ class MysqldbOperational(object):
                 consql = consql + "`" + tablename + "`." + "`" + k + "`" + '=' + v + ' and '
         consql = consql + ' 1=1 '
         sql = "UPDATE %s SET %s where%s" % (tablename, attrs_sql, consql)
-        #print(sql)
+        # print(sql)
         return self.executeCommit(sql)
 
     def dropTable(self, tablename):
@@ -451,7 +449,7 @@ class MysqldbOperational(object):
             if len(results) > 0:
                 return results[0]
             else:
-                #self.logger.debug(results)
+                # self.logger.debug(results)
                 return None
         except Exception as e:
             # print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "[ERROR] {0}\n".format(
@@ -538,15 +536,15 @@ class MysqldbOperational(object):
 
     def get_mqtt_devices(self):
         list = []
-        sql = "SELECT DISTINCT device_name FROM data_point_tbl"
+        sql = "SELECT DISTINCT device_name,is_avg FROM data_point_tbl"
         try:
             self._reConn()
             self.cursor = self.con.cursor()
             self.cursor.execute(sql)
             results = self.cursor.fetchall()
             for row in results:
-                if row[0] != None:
-                    list.append(row[0])
+                if row[0] is not None:
+                    list.append({"device_name": row[0], "is_avg": row[1]})
             self.cursor.close()
             return list
         except Exception as e:
@@ -566,7 +564,7 @@ class MysqldbOperational(object):
             results = self.cursor.fetchall()
             self.cursor.close()
             if len(results) > 0:
-                #print(results[0])
+                # print(results[0])
                 return results[0]
             else:
                 self.logger.debug(f"{tableName} 查询数据为0")
